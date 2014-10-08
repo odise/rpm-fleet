@@ -1,4 +1,4 @@
- Copyright 2014, Jan Nabbefeld
+# Copyright 2014, Jan Nabbefeld
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,8 @@
 #
 # sudo yum -y install rpmdevtools && rpmdev-setuptree
 # wget https://raw.github.com/odise/rpm-fleet/master/fleet.spec -O ~/rpmbuild/SPECS/fleet.spec
-# wget https://github.com/coreos/etcd/releases/download/v0.8.3/fleet-v0.8.3-linux-amd64.tar.gz -O ~/rpmbuild/SOURCES/fleet-v0.8.3-linux-amd64.tar.gz
+# wget https://raw.github.com/odise/rpm-fleet/master/fleet.service -O ~/rpmbuild/SOURCE/fleet.service
+# wget https://github.com/coreos/fleet/releases/download/v0.8.3/fleet-v0.8.3-linux-amd64.tar.gz -O ~/rpmbuild/SOURCES/fleet-v0.8.3-linux-amd64.tar.gz
 # rpmbuild -bb ~/rpmbuild/SPECS/fleet.spec
 
 %define debug_package %{nil}
@@ -33,9 +34,6 @@ URL:       https://github.com/coreos/fleet
 Group:     System Environment/Daemons
 Source0:   https://github.com/coreos/%{name}/releases/download/v%{version}/%{name}-v%{version}-linux-amd64.tar.gz
 Source1:   %{name}.service
-#Source2:   %{name}.sysconfig
-#Source3:   %{name}.nofiles.conf
-#Source4:   %{name}.logrotate
 Buildroot: %{_tmppath}/%{name}-%{version}-%{release}-%(%{__id_u} -n)
 Packager:  Jan Nabbefeld <jan.nabbefeld@kreuzwerker.de>
 Requires(pre): shadow-utils
@@ -58,37 +56,26 @@ rm -rf %{buildroot}
 echo  %{buildroot}
 
 %install
-install -d -m 755 %{buildroot}/%{_sbindir}
-install    -m 755 %{_builddir}/%{name}-v%{version}-linux-amd64/fleetd    %{buildroot}/%{_sbindir}
-install    -m 755 %{_builddir}/%{name}-v%{version}-linux-amd64/fleetctl %{buildroot}/%{_sbindir}
+install -d -m 755 %{buildroot}/%{_bindir}
+install    -m 755 %{_builddir}/%{name}-v%{version}-linux-amd64/fleetd    %{buildroot}/%{_bindir}
+install    -m 755 %{_builddir}/%{name}-v%{version}-linux-amd64/fleetctl %{buildroot}/%{_bindir}
 
 install -d -m 755 %{buildroot}/usr/share/doc/%{name}-v%{version}
 install    -m 644 %{_builddir}/%{name}-v%{version}-linux-amd64/README.md    %{buildroot}/%{_defaultdocdir}/%{name}-v%{version}
 
-#install -d -m 755 %{buildroot}/%{_localstatedir}/log/%{name}
-#install -d -m 755 %{buildroot}/%{_localstatedir}/lib/%{name}
-
-#install -d -m 755 %{buildroot}/%{_initrddir}
-#install    -m 755 %_sourcedir/%{name}.initd        %{buildroot}/%{_initrddir}/%{name}
-
 install -d -m 755 %{buildroot}/%{_sysconfdir}/systemd/system
 install    -m 644 %_sourcedir/%{name}.service    %{buildroot}/%{_sysconfdir}/systemd/system/%{name}.service
-
-#install -d -m 755 %{buildroot}/%{_sysconfdir}/logrotate.d
-#install    -m 644 %_sourcedir/%{name}.logrotate    %{buildroot}/%{_sysconfdir}/logrotate.d/%{name}
-
-#install -d -m 755 %{buildroot}/%{_sysconfdir}/security/limits.d/
-#install    -m 644 %_sourcedir/%{name}.nofiles.conf %{buildroot}/%{_sysconfdir}/security/limits.d/%{name}.nofiles.conf
 
 %clean
 rm -rf %{buildroot}
 
-%pre
-getent group %{etcd_group} >/dev/null || groupadd -r %{etcd_group}
-getent passwd %{etcd_user} >/dev/null || /usr/sbin/useradd --comment "etcd Daemon User" --shell /bin/bash -M -r -g %{etcd_group} --home %{etcd_data} %{etcd_user}
+#%pre
+#getent group %{etcd_group} >/dev/null || groupadd -r %{etcd_group}
+#getent passwd %{etcd_user} >/dev/null || /usr/sbin/useradd --comment "etcd Daemon User" --shell /bin/bash -M -r -g %{etcd_group} --home %{etcd_data} %{etcd_user}
 
 %post
 systemctl enable %{name} > /dev/null 2>&1
+systemctl start %{name} > /dev/null 2>&1
 
 %preun
 if [ $1 = 0 ]; then
@@ -100,12 +87,7 @@ fi
 %defattr(-,root,root)
 %{_bindir}/fleet*
 %{_defaultdocdir}/%{name}-v%{version}/*.md
-#%attr(0755,%{etcd_user},%{etcd_group}) %dir %{_localstatedir}/log/%{name}
-#%attr(0755,%{etcd_user},%{etcd_group}) %dir %{_localstatedir}/lib/%{name}
-#%{_initrddir}/etcd
-#%{_sysconfdir}/logrotate.d/%{name}
-#%{_sysconfdir}/security/limits.d/etcd.nofiles.conf
-#%config(noreplace) %{_sysconfdir}/sysconfig/%{name}
+%config(noreplace) %{_sysconfdir}/systemd/system/%{name}.service
 
 %changelog
 * Wed Oct 08 2014 Jan Nabbefeld <jan.nabbefeld@kreuzwerker.de> 0.1.0
