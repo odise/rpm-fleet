@@ -1,0 +1,6 @@
+[Unit]
+Description=fleet
+
+[Service]
+Environment=FLEET_PUBLIC_IP=127.0.0.1:4001
+ExecStart=/usr/bin/fleetd

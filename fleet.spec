@@ -32,16 +32,16 @@ License:   Apache 2.0
 URL:       https://github.com/coreos/fleet
 Group:     System Environment/Daemons
 Source0:   https://github.com/coreos/%{name}/releases/download/v%{version}/%{name}-v%{version}-linux-amd64.tar.gz
-#Source1:   %{name}.initd
+Source1:   %{name}.service
 #Source2:   %{name}.sysconfig
 #Source3:   %{name}.nofiles.conf
 #Source4:   %{name}.logrotate
 Buildroot: %{_tmppath}/%{name}-%{version}-%{release}-%(%{__id_u} -n)
 Packager:  Jan Nabbefeld <jan.nabbefeld@kreuzwerker.de>
 Requires(pre): shadow-utils
-Requires(post): /sbin/chkconfig
-Requires(preun): /sbin/chkconfig, /sbin/service
-Requires(postun): /sbin/service
+Requires(post): /bin/systemctl
+Requires(preun): /bin/systemctl
+Requires(postun): /bin/systemctl
 
 %description
 Fleet ties together systemd and etcd into a distributed init system. 
@@ -62,9 +62,8 @@ install -d -m 755 %{buildroot}/%{_sbindir}
 install    -m 755 %{_builddir}/%{name}-v%{version}-linux-amd64/fleetd    %{buildroot}/%{_sbindir}
 install    -m 755 %{_builddir}/%{name}-v%{version}-linux-amd64/fleetctl %{buildroot}/%{_sbindir}
 
-#install -d -m 755 %{buildroot}/usr/share/doc/%{name}-v%{version}
-#install    -m 644 %{_builddir}/%{name}-v%{version}-linux-amd64/README-etcd.md    %{buildroot}/%{_defaultdocdir}/%{name}-v%{version}
-#install    -m 644 %{_builddir}/%{name}-v%{version}-linux-amd64/README-etcdctl.md %{buildroot}/%{_defaultdocdir}/%{name}-v%{version}
+install -d -m 755 %{buildroot}/usr/share/doc/%{name}-v%{version}
+install    -m 644 %{_builddir}/%{name}-v%{version}-linux-amd64/README.md    %{buildroot}/%{_defaultdocdir}/%{name}-v%{version}
 
 #install -d -m 755 %{buildroot}/%{_localstatedir}/log/%{name}
 #install -d -m 755 %{buildroot}/%{_localstatedir}/lib/%{name}
@@ -72,8 +71,8 @@ install    -m 755 %{_builddir}/%{name}-v%{version}-linux-amd64/fleetctl %{buildr
 #install -d -m 755 %{buildroot}/%{_initrddir}
 #install    -m 755 %_sourcedir/%{name}.initd        %{buildroot}/%{_initrddir}/%{name}
 
-#install -d -m 755 %{buildroot}/%{_sysconfdir}/sysconfig/
-#install    -m 644 %_sourcedir/%{name}.sysconfig    %{buildroot}/%{_sysconfdir}/sysconfig/%{name}
+install -d -m 755 %{buildroot}/%{_sysconfdir}/systemd/system
+install    -m 644 %_sourcedir/%{name}.service    %{buildroot}/%{_sysconfdir}/systemd/system/%{name}.service
 
 #install -d -m 755 %{buildroot}/%{_sysconfdir}/logrotate.d
 #install    -m 644 %_sourcedir/%{name}.logrotate    %{buildroot}/%{_sysconfdir}/logrotate.d/%{name}
@@ -88,19 +87,19 @@ rm -rf %{buildroot}
 getent group %{etcd_group} >/dev/null || groupadd -r %{etcd_group}
 getent passwd %{etcd_user} >/dev/null || /usr/sbin/useradd --comment "etcd Daemon User" --shell /bin/bash -M -r -g %{etcd_group} --home %{etcd_data} %{etcd_user}
 
-#%post
-#chkconfig --add %{name}
+%post
+systemctl enable %{name} > /dev/null 2>&1
 
-#%preun
-#if [ $1 = 0 ]; then
-#  service %{name} stop > /dev/null 2>&1
-#  chkconfig --del %{name}
-#fi
+%preun
+if [ $1 = 0 ]; then
+  systemctl stop %{name} > /dev/null 2>&1
+  systemctl disable %{name} > /dev/null 2>&1
+fi
 
 %files
 %defattr(-,root,root)
-%{_sbindir}/fleet*
-#%{_defaultdocdir}/%{name}-v%{version}/*.md
+%{_bindir}/fleet*
+%{_defaultdocdir}/%{name}-v%{version}/*.md
 #%attr(0755,%{etcd_user},%{etcd_group}) %dir %{_localstatedir}/log/%{name}
 #%attr(0755,%{etcd_user},%{etcd_group}) %dir %{_localstatedir}/lib/%{name}
 #%{_initrddir}/etcd
